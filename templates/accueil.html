@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Accueil — Nous Deux{% endblock %}
+{% block content %}
+<div class="card hero-card">
+  <h1>Bonjour {{ user.prenom }} {{ user.avatar }}</h1>
+  <p class="hero-sub">Content de te revoir 💫</p>
+</div>
+
+<div class="card partner-card">
+  {{ avatar_html(partner, 'big') }}
+  <div>
+    <h3>{{ partner.prenom if partner else 'Personne' }}</h3>
+    <p>
+      {% if partner and partner.en_ligne %}
+        <span class="dot dot-online"></span> En ligne
+      {% else %}
+        <span class="dot dot-offline"></span> Absente
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="quick-grid">
+  <a href="{{ url_for('plan_jour') }}" class="card quick-card">
+    <div class="quick-icon">☀️</div>
+    <h4>Plan du jour</h4>
+    <div class="progress-bar"><div class="progress-fill" style="width:{{ progression }}%"></div></div>
+    <p>{{ faites }} / {{ total }} terminées — {{ progression }}%</p>
+  </a>
+  <a href="{{ url_for('emploi_temps') }}" class="card quick-card">
+    <div class="quick-icon">📅</div>
+    <h4>Emploi du temps</h4>
+    <p>Voir la semaine</p>
+  </a>
+  <a href="{{ url_for('action_verite') }}" class="card quick-card">
+    <div class="quick-icon">🎲</div>
+    <h4>Action / Vérité</h4>
+    <p>Lancer un défi</p>
+  </a>
+  <a href="{{ url_for('decouvrir') }}" class="card quick-card">
+    <div class="quick-icon">💌</div>
+    <h4>À découvrir</h4>
+    <p>Laisser un mot</p>
+  </a>
+</div>
+{% endblock %}

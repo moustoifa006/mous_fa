@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — Nous Deux</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" content="#e0607e">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nous Deux">
+</head>
+<body>
+<main class="container login-container">
+  <div class="login-card">
+    <h1>💞 Nous Deux</h1>
+    {% if users %}
+    <p class="subtitle">Connecte-toi</p>
+    <form method="POST" class="login-form">
+      <select name="user_id" required>
+        <option value="" disabled selected>Choisis ton profil</option>
+        {% for u in users %}
+        <option value="{{ u.id }}">{{ u.avatar }} {{ u.prenom }}</option>
+        {% endfor %}
+      </select>
+      <input type="password" name="mot_de_passe" placeholder="Mot de passe" required>
+      <button type="submit" class="btn-primary">Se connecter</button>
+    </form>
+    {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
+    {% else %}
+    <p class="subtitle">Personne n'a encore de compte ici.</p>
+    {% endif %}
+    {% if users|length < 2 %}
+    <a href="{{ url_for('creer_compte') }}" class="btn-primary login-create-link">➕ Créer un compte</a>
+    {% endif %}
+  </div>
+</main>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>

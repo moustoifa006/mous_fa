@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Plan du jour — Nous Deux{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header-row">
+    <h2>☀️ Mon programme du jour</h2>
+    <span id="progression-label" class="progression-label"></span>
+  </div>
+  <div class="progress-bar"><div id="progress-fill" class="progress-fill" style="width:0%"></div></div>
+
+  <form id="form-add-activite" class="inline-form">
+    <input type="time" name="heure" value="08:00" required>
+    <input type="text" name="emoji" value="📌" maxlength="4" class="emoji-input" title="Emoji">
+    <input type="text" name="titre" placeholder="Nouvelle activité..." required>
+    <button type="submit" class="btn-primary">➕ Ajouter</button>
+  </form>
+
+  <div id="liste-activites" class="activite-list"></div>
+</div>
+
+<div class="card">
+  <h3>👀 Programme de {{ partner.prenom if partner else '...' }}</h3>
+  <div class="activite-list readonly">
+    {% for a in ses_activites %}
+    <div class="activite-item statut-{{ a.statut }}">
+      <span class="activite-heure">{{ a.heure }}</span>
+      <span>{{ a.emoji }} {{ a.titre }}</span>
+      <span class="statut-tag">
+        {% if a.statut == 'termine' %}✅{% elif a.statut == 'en_cours' %}🔵{% else %}⬜{% endif %}
+      </span>
+    </div>
+    {% else %}
+    <p class="empty-state">Rien de prévu pour l'instant.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TODAY = "{{ today }}";
+
+function statutIcon(s) { return s === 'termine' ? '✅' : (s === 'en_cours' ? '🔵' : '⬜'); }
+function nextStatut(s) { return s === 'a_faire' ? 'en_cours' : (s === 'en_cours' ? 'termine' : 'a_faire'); }
+
+async function chargerActivites() {
+  const res = await fetch(`/api/plan?date=${TODAY}`);
+  const items = await res.json();
+  const zone = document.getElementById('liste-activites');
+  zone.innerHTML = '';
+  items.forEach(a => {
+    const div = document.createElement('div');
+    div.className = `activite-item statut-${a.statut}`;
+    div.innerHTML = `
+      <input type="time" value="${a.heure}" class="activite-heure-input" onchange="modifierActivite(${a.id}, {heure: this.value})">
+      <span class="activite-titre" ondblclick="renommerActivite(${a.id}, this)">${a.emoji} ${a.titre}</span>
+      <button class="statut-btn" onclick="cyclerStatut(${a.id}, '${a.statut}')" title="Changer le statut">${statutIcon(a.statut)}</button>
+      <button class="icon-btn" onclick="supprimerActivite(${a.id})" title="Supprimer">🗑️</button>
+    `;
+    zone.appendChild(div);
+  });
+  const total = items.length;
+  const faites = items.filter(a => a.statut === 'termine').length;
+  const pct = total ? Math.round((faites / total) * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progression-label').textContent = `${faites} / ${total} terminées — ${pct}%`;
+}
+
+async function cyclerStatut(id, current) {
+  const nouveau = nextStatut(current);
+  await fetch(`/api/plan/${id}`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({statut: nouveau})});
+  chargerActivites();
+}
+
+async function modifierActivite(id, champs) {
+  await fetch(`/api/plan/${id}`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(champs)});
+  chargerActivites();
+}
+
+function renommerActivite(id, el) {
+  const nouveauTitre = prompt('Nouveau titre :', el.textContent.trim());
+  if (nouveauTitre) modifierActivite(id, {titre: nouveauTitre});
+}
+
+async function supprimerActivite(id) {
+  if (!confirm('Supprimer cette activité ?')) return;
+  await fetch(`/api/plan/${id}`, {method: 'DELETE'});
+  chargerActivites();
+}
+
+document.getElementById('form-add-activite').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  await fetch('/api/plan', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({date: TODAY, heure: fd.get('heure'), titre: fd.get('titre'), emoji: fd.get('emoji')})
+  });
+  e.target.reset();
+  e.target.heure.value = '08:00';
+  e.target.emoji.value = '📌';
+  chargerActivites();
+});
+
+chargerActivites();
+</script>
+{% endblock %}

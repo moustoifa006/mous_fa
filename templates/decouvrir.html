@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}À découvrir — Nous Deux{% endblock %}
+{% block content %}
+<div class="card chat-card">
+  <div class="chat-header">
+    {{ avatar_html(partner, 'small') }}
+    <div>
+      <h3>{{ partner.prenom if partner else 'Personne' }}</h3>
+      <p class="chat-status">
+        {% if partner and partner.en_ligne %}
+          <span class="dot dot-online"></span> En ligne
+        {% else %}
+          <span class="dot dot-offline"></span> Absente
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="chat-messages" id="chat-messages">
+    {% for m in messages %}
+    <div class="chat-bubble-row {{ 'mine' if m.sender_id == user.id else 'theirs' }}">
+      <div class="chat-bubble" data-id="{{ m.id }}" onclick="repondreA({{ m.id }}, {{ m.texte|tojson }})">
+        {% if m.reply_to %}
+        <div class="reply-quote">↩️ {{ m.reply_to.texte[:60] }}{{ '…' if m.reply_to.texte|length > 60 else '' }}</div>
+        {% endif %}
+        <p>{{ m.texte }}</p>
+        <small>{{ m.date_envoi.strftime('%d/%m %H:%M') }}{% if m.modifie %} · modifié{% endif %}{% if m.sender_id == user.id %} — {{ 'Vu ✅' if m.lu else 'Envoyé' }}{% endif %}</small>
+      </div>
+      {% if m.sender_id == user.id %}
+      <div class="bubble-actions">
+        <button class="icon-btn" onclick="event.stopPropagation(); modifierMessage({{ m.id }}, {{ m.texte|tojson }})">✏️</button>
+        <button class="icon-btn chat-delete" onclick="event.stopPropagation(); supprimerMessage({{ m.id }})">🗑️</button>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="empty-state">Aucun message pour l'instant — écris le premier petit mot 💌</p>
+    {% endfor %}
+  </div>
+
+  <div id="reply-preview" class="reply-preview hidden">
+    <span id="reply-preview-text"></span>
+    <button type="button" class="icon-btn" onclick="annulerReponse()">✖️</button>
+  </div>
+
+  <form id="form-add-message" class="chat-input-row">
+    <input type="hidden" id="reply-to-input" name="reply_to" value="">
+    <textarea name="texte" rows="1" placeholder="Écris ton petit mot..." required></textarea>
+    <button type="submit" class="btn-primary btn-send">Envoyer 💌</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const chatZone = document.getElementById('chat-messages');
+chatZone.scrollTop = chatZone.scrollHeight;
+
+// Si la page a été ouverte depuis une notification, le message indiqué
+// est automatiquement sélectionné pour pouvoir répondre directement.
+const replyFromNotification = new URLSearchParams(window.location.search).get('reply');
+if (replyFromNotification) {
+  const id = parseInt(replyFromNotification, 10);
+  const bubble = document.querySelector(`.chat-bubble[data-id=\"${id}\"]`);
+  if (bubble) {
+    bubble.scrollIntoView({behavior: 'smooth', block: 'center'});
+    const texte = bubble.querySelector('p')?.textContent || '';
+    repondreA(id, texte);
+  }
+  if (history.replaceState) history.replaceState({}, document.title, window.location.pathname);
+}
+
+let replyTo = null;
+function repondreA(id, texte) {
+  replyTo = id;
+  document.getElementById('reply-to-input').value = id;
+  document.getElementById('reply-preview-text').textContent = '↩️ ' + texte.slice(0, 60);
+  document.getElementById('reply-preview').classList.remove('hidden');
+  document.querySelector('#form-add-message textarea').focus();
+}
+function annulerReponse() {
+  replyTo = null;
+  document.getElementById('reply-to-input').value = '';
+  document.getElementById('reply-preview').classList.add('hidden');
+}
+
+document.getElementById('form-add-message').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = {texte: fd.get('texte')};
+  if (fd.get('reply_to')) body.reply_to = parseInt(fd.get('reply_to'));
+  const res = await fetch('/api/messages', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  if (res.ok) location.reload();
+  else { const err = await res.json(); alert(err.error || "Erreur d'envoi."); }
+});
+
+async function supprimerMessage(id) {
+  if (!confirm('Supprimer ce message ?')) return;
+  await fetch(`/api/messages/${id}`, {method: 'DELETE'});
+  location.reload();
+}
+
+async function modifierMessage(id, texteActuel) {
+  const nouveau = prompt('Modifier ton message :', texteActuel);
+  if (nouveau === null || !nouveau.trim() || nouveau === texteActuel) return;
+  const res = await fetch(`/api/messages/${id}`, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({texte: nouveau.trim()})
+  });
+  if (res.ok) location.reload();
+}
+</script>
+{% endblock %}

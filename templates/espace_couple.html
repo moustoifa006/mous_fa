@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Espace couple — Nous Deux{% endblock %}
+{% block content %}
+
+{% if rappels %}
+<div class="card rappel-card">
+  <h2>📅 Aujourd'hui, ça vous rappelle quelque chose...</h2>
+  {% for s in rappels %}
+  <div class="rappel-item">
+    <h4>{{ s.titre }}</h4>
+    <p>{{ s.texte }}</p>
+  </div>
+  {% endfor %}
+  <p class="rappel-suggest-title">Quelques idées pour fêter ça :</p>
+  <ul class="rappel-suggestions">
+    {% for sug in suggestions %}<li>{{ sug }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>🎯 Nos objectifs à deux</h2>
+  <form id="form-add-objectif" class="inline-form">
+    <input type="text" name="texte" placeholder="Nouvel objectif..." required>
+    <button type="submit" class="btn-primary">➕ Ajouter</button>
+  </form>
+  <div class="objectif-list">
+    {% for o in objectifs_en_cours %}
+    <div class="objectif-item" data-id="{{ o.id }}">
+      <button class="checkbox-btn" onclick="realiserObjectif({{ o.id }})" title="Marquer comme réalisé pour toujours">⬜</button>
+      <span class="objectif-text" ondblclick="renommerObjectif({{ o.id }}, this)">{{ o.texte }}</span>
+      <button class="icon-btn" onclick="supprimerObjectif({{ o.id }})">🗑️</button>
+    </div>
+    {% else %}
+    <p class="empty-state">Aucun objectif en cours.</p>
+    {% endfor %}
+  </div>
+
+  {% if objectifs_realises %}
+  <h3 class="plaque-title">🏆 Rêves réalisés — gravés pour toujours</h3>
+  <div class="objectif-list">
+    {% for o in objectifs_realises %}
+    <div class="objectif-item plaque">
+      <span class="plaque-check">✅</span>
+      <span class="objectif-text">{{ o.texte }}</span>
+      <small>{{ o.date_realise.strftime('%d/%m/%Y') if o.date_realise else '' }}</small>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>📸 Nos souvenirs</h2>
+  <p class="hint-text">Ajoute une date : le jour venu, l'appli te le rappellera ici avec des idées 💡</p>
+  <form id="form-add-souvenir" class="inline-form wrap">
+    <input type="text" name="titre" placeholder="Titre du souvenir..." required>
+    <input type="date" name="date">
+    <input type="text" name="texte" placeholder="Raconte ce moment..." class="grow">
+    <button type="submit" class="btn-primary">➕ Ajouter</button>
+  </form>
+  <div class="souvenir-list">
+    {% for s in souvenirs %}
+    <div class="souvenir-item" data-id="{{ s.id }}">
+      <div class="souvenir-header">
+        <h4>{{ s.titre }}</h4>
+        <span>{{ s.date_souvenir }}</span>
+        <button class="icon-btn" onclick="supprimerSouvenir({{ s.id }})">🗑️</button>
+      </div>
+      <p>{{ s.texte }}</p>
+    </div>
+    {% else %}
+    <p class="empty-state">Aucun souvenir enregistré.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('form-add-objectif').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  await fetch('/api/objectifs', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({texte: fd.get('texte')})});
+  location.reload();
+});
+
+async function realiserObjectif(id) {
+  if (!confirm('Marquer ce rêve comme réalisé ? Il sera gravé pour toujours et ne pourra plus être modifié ni supprimé.')) return;
+  const res = await fetch(`/api/objectifs/${id}`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({termine: true})});
+  if (res.ok) location.reload();
+}
+
+function renommerObjectif(id, el) {
+  const nouveau = prompt('Modifier l\'objectif :', el.textContent.trim());
+  if (nouveau) {
+    fetch(`/api/objectifs/${id}`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({texte: nouveau})}).then(() => location.reload());
+  }
+}
+
+async function supprimerObjectif(id) {
+  if (!confirm('Supprimer cet objectif ?')) return;
+  const res = await fetch(`/api/objectifs/${id}`, {method: 'DELETE'});
+  if (!res.ok) { const err = await res.json(); alert(err.error); return; }
+  location.reload();
+}
+
+document.getElementById('form-add-souvenir').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  await fetch('/api/souvenirs', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({titre: fd.get('titre'), texte: fd.get('texte'), date: fd.get('date') || undefined})
+  });
+  location.reload();
+});
+
+async function supprimerSouvenir(id) {
+  if (!confirm('Supprimer ce souvenir ?')) return;
+  await fetch(`/api/souvenirs/${id}`, {method: 'DELETE'});
+  location.reload();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Créer un compte — Nous Deux</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" content="#e0607e">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nous Deux">
+</head>
+<body>
+<main class="container login-container">
+  <div class="login-card">
+    <h1>💞 Nous Deux</h1>
+    <p class="subtitle">Créer ton compte ({{ nb_comptes }}/2)</p>
+    <form method="POST" class="login-form">
+      <input type="text" name="prenom" placeholder="Ton prénom" required>
+      <input type="text" name="avatar" placeholder="Emoji avatar (ex: 😊)" maxlength="4">
+      <input type="password" name="mot_de_passe" placeholder="Mot de passe" required>
+      <input type="password" name="mot_de_passe2" placeholder="Confirme le mot de passe" required>
+      <button type="submit" class="btn-primary">Créer mon compte</button>
+    </form>
+    {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
+    <a href="{{ url_for('login') }}" class="login-back-link">← Retour à la connexion</a>
+  </div>
+</main>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verrouillé — Nous Deux</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" content="#e0607e">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nous Deux">
+</head>
+<body>
+<main class="container login-container">
+  <div class="login-card">
+    <h1>🔒 App verrouillée</h1>
+    <p class="subtitle">Salut {{ user.prenom }}, entre ton mot de passe pour continuer</p>
+    <form method="POST" class="login-form">
+      <input type="hidden" name="next" value="{{ next }}">
+      <input type="password" name="mot_de_passe" placeholder="Mot de passe" required autofocus>
+      <button type="submit" class="btn-primary">🔓 Déverrouiller</button>
+    </form>
+    {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
+  </div>
+</main>
+</body>
+</html>

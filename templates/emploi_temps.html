@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Emploi du temps — Nous Deux{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>📅 Mon emploi du temps</h2>
+  <p>Lundi → Dimanche, 00:00 → 23:00. Les horaires peuvent être différents chaque jour.</p>
+
+  <form id="form-add-creneau" class="inline-form wrap">
+    <select name="jour" required>
+      {% for j in jours %}
+      <option value="{{ loop.index0 }}">{{ j }}</option>
+      {% endfor %}
+    </select>
+    <input type="time" name="heure_debut" value="08:00" required>
+    <input type="time" name="heure_fin" value="09:00" required>
+    <input type="text" name="titre" placeholder="Titre du créneau..." required>
+    <input type="color" name="couleur" value="#ff8fab">
+    <button type="submit" class="btn-primary">➕ Ajouter</button>
+  </form>
+</div>
+
+<div class="card schedule-card">
+  <div class="schedule-scroll">
+    <div class="schedule-grid" id="schedule-grid">
+      <div class="schedule-corner"></div>
+      {% for j in jours %}
+      <div class="schedule-day-header">{{ j }}</div>
+      {% endfor %}
+
+      <div class="schedule-hours">
+        {% for h in range(24) %}
+        <div class="schedule-hour-label">{{ '%02d:00' % h }}</div>
+        {% endfor %}
+      </div>
+
+      {% for j in jours %}
+      <div class="schedule-day-col" data-jour="{{ loop.index0 }}" id="col-{{ loop.index0 }}"></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function chargerSemaine() {
+  const res = await fetch('/api/semaine');
+  const items = await res.json();
+  for (let j = 0; j < 7; j++) {
+    document.getElementById(`col-${j}`).innerHTML = '';
+  }
+  items.forEach(c => {
+    const col = document.getElementById(`col-${c.jour}`);
+    if (!col) return;
+    const [hd, md] = c.heure_debut.split(':').map(Number);
+    const [hf, mf] = c.heure_fin.split(':').map(Number);
+    const top = (hd * 60 + md) / (24 * 60) * 100;
+    const height = Math.max(((hf * 60 + mf) - (hd * 60 + md)) / (24 * 60) * 100, 2);
+    const bloc = document.createElement('div');
+    bloc.className = 'schedule-block';
+    bloc.style.top = top + '%';
+    bloc.style.height = height + '%';
+    bloc.style.background = c.couleur;
+    bloc.innerHTML = `<strong>${c.titre}</strong><small>${c.heure_debut}–${c.heure_fin}</small>
+      <button class="icon-btn-mini" onclick="supprimerCreneau(${c.id}, event)">✕</button>`;
+    bloc.title = 'Double-clic pour modifier';
+    bloc.addEventListener('dblclick', () => modifierCreneau(c));
+    col.appendChild(bloc);
+  });
+}
+
+async function modifierCreneau(c) {
+  const titre = prompt('Titre du créneau :', c.titre);
+  if (titre === null) return;
+  const heure_debut = prompt('Heure de début (HH:MM) :', c.heure_debut) || c.heure_debut;
+  const heure_fin = prompt('Heure de fin (HH:MM) :', c.heure_fin) || c.heure_fin;
+  await fetch(`/api/semaine/${c.id}`, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({titre, heure_debut, heure_fin})
+  });
+  chargerSemaine();
+}
+
+async function supprimerCreneau(id, evt) {
+  evt.stopPropagation();
+  if (!confirm('Supprimer ce créneau ?')) return;
+  await fetch(`/api/semaine/${id}`, {method: 'DELETE'});
+  chargerSemaine();
+}
+
+document.getElementById('form-add-creneau').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  await fetch('/api/semaine', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      jour: fd.get('jour'), heure_debut: fd.get('heure_debut'),
+      heure_fin: fd.get('heure_fin'), titre: fd.get('titre'), couleur: fd.get('couleur')
+    })
+  });
+  e.target.reset();
+  chargerSemaine();
+});
+
+chargerSemaine();
+</script>
+{% endblock %}

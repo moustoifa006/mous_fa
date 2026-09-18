@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}Action / Vérité — Nous Deux{% endblock %}
+{% block content %}
+
+{% if a_choisir %}
+<div class="card">
+  <h2>🔥 {{ partner.prenom if partner else 'Ton/ta partenaire' }} t'a envoyé un défi</h2>
+  {% for d in a_choisir %}
+  <div class="duel-blind" data-id="{{ d.id }}">
+    <p class="duel-hint">Choisis un seul des deux — tu ne pourras plus voir l'autre ensuite.</p>
+    <div class="big-buttons">
+      <button class="btn-choice btn-action" onclick="choisir({{ d.id }}, 'action')">🎯 ACTION</button>
+      <button class="btn-choice btn-verite" onclick="choisir({{ d.id }}, 'verite')">🤫 VÉRITÉ</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if en_attente_preuve %}
+<div class="card">
+  <h2>📸 Tu dois encore prouver que tu l'as fait</h2>
+  {% for d in en_attente_preuve %}
+  <div class="duel-proof-pending">
+    <p><span class="badge badge-{{ d.choix }}">{{ '🎯' if d.choix=='action' else '🤫' }}</span> {{ d.texte_choisi() }}</p>
+    <form class="preuve-form" onsubmit="envoyerPreuve(event, {{ d.id }})">
+      <input type="text" name="texte" placeholder="Écris une phrase pour prouver que c'est fait (optionnel)">
+      <input type="file" name="photo" accept="image/*">
+      <button type="submit" class="btn-primary btn-send">Envoyer la preuve ✅</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <button type="button" class="btn-primary btn-toggle-propose" onclick="toggleProposer()">✍️ Proposer un nouveau défi</button>
+  <div id="panneau-proposer" class="panneau-proposer hidden">
+    <p>Écris toi-même l'action et la vérité — {{ partner.prenom if partner else 'la personne' }} devra choisir une seule des deux, à l'aveugle.</p>
+    <form id="form-add-defi" class="duel-form">
+      <label>🎯 Action</label>
+      <input type="text" name="texte_action" placeholder="Écris l'action ici..." required>
+      <label>🤫 Vérité</label>
+      <input type="text" name="texte_verite" placeholder="Écris la vérité ici..." required>
+      <button type="submit" class="btn-primary btn-send">Envoyer les deux 💌</button>
+    </form>
+
+    <div class="card-header-row" style="margin-top:18px;">
+      <h3>💡 Besoin d'inspiration ?</h3>
+      <select id="categorie-select">
+        <option value="">Toutes catégories</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}">{{ cat|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div id="liste-idees" class="challenge-list"></div>
+    <form id="form-add-idee" class="inline-form">
+      <select name="type" required>
+        <option value="action">Action</option>
+        <option value="verite">Vérité</option>
+      </select>
+      <input type="text" name="categorie" placeholder="Catégorie" value="couple">
+      <input type="text" name="texte" placeholder="Ajouter une idée à la banque..." required>
+      <button type="submit" class="btn-primary">➕</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>💬 Réponses & discussions</h2>
+  <div class="history-list">
+    {% for d in reponses %}
+    <div class="history-item {{ 'termine' if d.statut=='termine' }}" data-id="{{ d.id }}">
+      {% if d.sender_id == user.id %}
+        <span class="badge">Envoyé à {{ partner.prenom if partner else '...' }}</span>
+      {% else %}
+        <span class="badge">Reçu de {{ partner.prenom if partner else '...' }}</span>
+      {% endif %}
+      <div class="history-text">
+        <p><span class="badge badge-{{ d.choix }}">{{ '🎯' if d.choix=='action' else '🤫' }} choisi</span> {{ d.texte_choisi() }}</p>
+        {% if d.statut == 'termine' %}
+        <p class="preuve-affichee">
+          {% if d.preuve_texte %}💬 « {{ d.preuve_texte }} »{% endif %}
+          {% if d.preuve_photo_mimetype %}<br><img src="{{ url_for('foto_preuve', did=d.id) }}" class="preuve-photo"></br>{% endif %}
+        </p>
+        {% else %}
+        <small>En attente de preuve...</small>
+        {% endif %}
+      </div>
+      <small class="date-defi">{{ d.date_envoi.strftime('%d/%m %H:%M') }}</small>
+      <button class="icon-btn" onclick="supprimerDefi({{ d.id }})" title="Supprimer">🗑️</button>
+
+      <div class="defi-chat" id="defi-chat-{{ d.id }}">
+        {% for m in reponses_dict.get(d.id, []) %}
+        <div class="defi-chat-bubble {{ 'mine' if m.sender_id == user.id else 'theirs' }}" data-id="{{ m.id }}" onclick="repondreADefi({{ d.id }}, {{ m.id }}, {{ m.texte|tojson }})">
+          {% if m.reply_to %}
+          <div class="reply-quote">↩️ {{ m.reply_to.texte[:50] }}{{ '…' if m.reply_to.texte|length > 50 else '' }}</div>
+          {% endif %}
+          <p>{{ m.texte }}</p>
+          <small>{{ m.date_envoi.strftime('%d/%m %H:%M') }}{% if m.modifie %} · modifié{% endif %}</small>
+          {% if m.sender_id == user.id %}
+          <span class="defi-msg-actions">
+            <button class="icon-btn" onclick="event.stopPropagation(); modifierMessageDefi({{ m.id }}, {{ m.texte|tojson }})">✏️</button>
+          </span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="defi-reply-preview hidden" id="defi-reply-preview-{{ d.id }}">
+        <span></span>
+        <button type="button" class="icon-btn" onclick="annulerReponseDefi({{ d.id }})">✖️</button>
+      </div>
+      <form class="defi-chat-form" onsubmit="envoyerMessageDefi(event, {{ d.id }})">
+        <input type="hidden" name="reply_to" value="">
+        <input type="text" name="texte" placeholder="Continuer la discussion...">
+        <button type="submit" class="btn-primary btn-send btn-send-small">Envoyer ➤</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="empty-state">Aucune réponse pour le moment — proposez un défi ci-dessus 👆</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleProposer() {
+  document.getElementById('panneau-proposer').classList.toggle('hidden');
+}
+
+const IDEES = {{ idees_json|tojson }};
+
+function afficherIdees() {
+  const cat = document.getElementById('categorie-select').value;
+  const zone = document.getElementById('liste-idees');
+  const filtrees = IDEES.filter(i => !cat || i.categorie === cat);
+  zone.innerHTML = '';
+  filtrees.forEach(i => {
+    const div = document.createElement('div');
+    div.className = 'challenge-item';
+    div.innerHTML = `
+      <span class="badge badge-${i.type}">${i.type === 'action' ? '🎯' : '🤫'} ${i.categorie}</span>
+      <span class="challenge-text">${i.texte}</span>
+      <button class="btn-small" onclick="utiliserIdee('${i.type}', ${JSON.stringify(i.texte)})">Utiliser</button>
+      <button class="icon-btn" onclick="supprimerIdee(${i.id})" title="Supprimer">🗑️</button>
+    `;
+    zone.appendChild(div);
+  });
+}
+document.getElementById('categorie-select').addEventListener('change', afficherIdees);
+afficherIdees();
+
+function utiliserIdee(type, texte) {
+  const form = document.getElementById('form-add-defi');
+  if (type === 'action') form.texte_action.value = texte;
+  else form.texte_verite.value = texte;
+  document.getElementById('panneau-proposer').classList.remove('hidden');
+  form.scrollIntoView({behavior: 'smooth'});
+}
+
+async function supprimerIdee(id) {
+  if (!confirm('Supprimer cette idée de la banque ?')) return;
+  await fetch(`/api/idees/${id}`, {method: 'DELETE'});
+  location.reload();
+}
+
+document.getElementById('form-add-idee').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  await fetch('/api/idees', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({type: fd.get('type'), categorie: fd.get('categorie'), texte: fd.get('texte')})
+  });
+  location.reload();
+});
+
+document.getElementById('form-add-defi').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  await fetch('/api/defis', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({texte_action: fd.get('texte_action'), texte_verite: fd.get('texte_verite')})
+  });
+  location.reload();
+});
+
+async function choisir(id, choix) {
+  const res = await fetch(`/api/defis/${id}/choisir`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({choix})
+  });
+  if (res.ok) location.reload();
+}
+
+async function envoyerPreuve(evt, id) {
+  evt.preventDefault();
+  const fd = new FormData(evt.target);
+  const res = await fetch(`/api/defis/${id}/preuve`, {method: 'POST', body: fd});
+  if (res.ok) location.reload();
+  else { const err = await res.json(); alert(err.error || "Erreur lors de l'envoi de la preuve."); }
+}
+
+async function supprimerDefi(id) {
+  if (!confirm('Supprimer ce défi ?')) return;
+  await fetch(`/api/defis/${id}`, {method: 'DELETE'});
+  location.reload();
+}
+
+function repondreADefi(defiId, msgId, texte) {
+  const form = document.querySelector(`#defi-chat-${defiId}`).parentElement.querySelector('.defi-chat-form');
+  form.reply_to.value = msgId;
+  const preview = document.getElementById(`defi-reply-preview-${defiId}`);
+  preview.querySelector('span').textContent = '↩️ ' + texte.slice(0, 50);
+  preview.classList.remove('hidden');
+  form.texte.focus();
+}
+function annulerReponseDefi(defiId) {
+  const form = document.querySelector(`#defi-chat-${defiId}`).parentElement.querySelector('.defi-chat-form');
+  form.reply_to.value = '';
+  document.getElementById(`defi-reply-preview-${defiId}`).classList.add('hidden');
+}
+
+async function envoyerMessageDefi(evt, id) {
+  evt.preventDefault();
+  const form = evt.target;
+  const texte = form.texte.value.trim();
+  if (!texte) return;
+  const body = {texte};
+  if (form.reply_to.value) body.reply_to = parseInt(form.reply_to.value);
+  const res = await fetch(`/api/defis/${id}/messages`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  if (res.ok) location.reload();
+}
+
+async function modifierMessageDefi(id, texteActuel) {
+  const nouveau = prompt('Modifier ton message :', texteActuel);
+  if (nouveau === null || !nouveau.trim() || nouveau === texteActuel) return;
+  const res = await fetch(`/api/defis/messages/${id}`, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({texte: nouveau.trim()})
+  });
+  if (res.ok) location.reload();
+}
+</script>
+{% endblock %}

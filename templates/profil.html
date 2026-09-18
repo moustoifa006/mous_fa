@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Profil — Nous Deux{% endblock %}
+{% block content %}
+<div class="card profil-card">
+  <h2>👤 Mon profil</h2>
+  <div class="profil-avatar-preview">{{ avatar_html(user, 'big') }}</div>
+  <form method="POST" enctype="multipart/form-data" class="profil-form">
+    <label>Photo de profil</label>
+    <input type="file" name="photo" accept="image/*">
+    <label>Avatar (emoji, utilisé si pas de photo)</label>
+    <input type="text" name="avatar" value="{{ user.avatar }}" maxlength="4" class="emoji-input">
+    <label>Prénom</label>
+    <input type="text" name="prenom" value="{{ user.prenom }}" required>
+    <label>Nouveau mot de passe (laisser vide pour ne pas changer)</label>
+    <input type="password" name="nouveau_mdp" placeholder="••••••">
+    <button type="submit" class="btn-primary">💾 Enregistrer</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>🔔 Notifications</h3>
+  <p class="hint-text" id="notif-statut">Vérification du statut...</p>
+  <button type="button" class="btn-primary" id="btn-activer-notif" onclick="activerNotifications()">🔔 Activer les notifications sur cet appareil</button>
+</div>
+
+<div class="card">
+  <h3>🔒 Verrouillage de l'app</h3>
+  {% if user.verrouillage_actif %}
+  <p class="hint-text">✅ Activé — ton mot de passe sera redemandé après un moment d'inactivité.</p>
+  <form method="POST" action="{{ url_for('toggle_verrouillage') }}">
+    <button type="submit" class="btn-secondary">Désactiver le verrouillage</button>
+  </form>
+  {% else %}
+  <p class="hint-text">Désactivé — n'importe qui avec ton téléphone déverrouillé peut ouvrir l'app directement.</p>
+  <form method="POST" action="{{ url_for('toggle_verrouillage') }}">
+    <button type="submit" class="btn-primary">Activer le verrouillage par mot de passe</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Partenaire</h3>
+  <div class="partner-card" style="margin:0;">
+    {{ avatar_html(partner, 'big') }}
+    <div>
+      <h4>{{ partner.prenom if partner else 'Personne' }}</h4>
+      <p>{{ 'En ligne 🟢' if partner and partner.en_ligne else 'Absente ⚪' }}</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const statutEl = document.getElementById('notif-statut');
+  const btn = document.getElementById('btn-activer-notif');
+  if (!('Notification' in window)) {
+    statutEl.textContent = "Les notifications ne sont pas supportées par ce navigateur.";
+    btn.style.display = 'none';
+  } else if (Notification.permission === 'granted') {
+    statutEl.textContent = "✅ Les notifications sont activées sur cet appareil.";
+    btn.textContent = "🔔 Réactiver / vérifier";
+  } else if (Notification.permission === 'denied') {
+    statutEl.textContent = "🚫 Les notifications ont été refusées. Réactive-les dans les réglages du navigateur.";
+    btn.style.display = 'none';
+  } else {
+    statutEl.textContent = "Pas encore activées sur cet appareil.";
+  }
+})();
+</script>
+{% endblock %}

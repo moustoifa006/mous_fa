@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Nous Deux{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" content="#e0607e">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nous Deux">
+</head>
+<body>
+{% if user %}
+<nav class="navbar">
+  <div class="nav-brand">💞 Nous Deux</div>
+  <div class="nav-links">
+    <a href="{{ url_for('accueil') }}" class="{{ 'active' if request.endpoint=='accueil' }}">🏠 Accueil</a>
+    <a href="{{ url_for('action_verite') }}" class="{{ 'active' if request.endpoint=='action_verite' }}">🎲 Action/Vérité{% if notif_action_verite %}<span class="nav-badge">{{ notif_action_verite }}</span>{% endif %}</a>
+    <a href="{{ url_for('plan_jour') }}" class="{{ 'active' if request.endpoint=='plan_jour' }}">☀️ Plan du jour{% if notif_plan_jour %}<span class="nav-badge">{{ notif_plan_jour }}</span>{% endif %}</a>
+    <a href="{{ url_for('emploi_temps') }}" class="{{ 'active' if request.endpoint=='emploi_temps' }}">📅 Emploi du temps</a>
+    <a href="{{ url_for('decouvrir') }}" class="{{ 'active' if request.endpoint=='decouvrir' }}">💌 À découvrir{% if notif_decouvrir %}<span class="nav-badge">{{ notif_decouvrir }}</span>{% endif %}</a>
+    <a href="{{ url_for('espace_couple') }}" class="{{ 'active' if request.endpoint=='espace_couple' }}">❤️ Espace couple{% if notif_espace_couple %}<span class="nav-badge">{{ notif_espace_couple }}</span>{% endif %}</a>
+    <a href="{{ url_for('profil') }}" class="{{ 'active' if request.endpoint=='profil' }}">👤 Profil</a>
+  </div>
+  <a href="{{ url_for('logout') }}" class="nav-logout">Déconnexion</a>
+</nav>
+<nav class="navbar-mobile">
+  <a href="{{ url_for('accueil') }}" title="Accueil">🏠</a>
+  <a href="{{ url_for('action_verite') }}" title="Action/Vérité">🎲{% if notif_action_verite %}<span class="nav-badge nav-badge-mobile">{{ notif_action_verite }}</span>{% endif %}</a>
+  <a href="{{ url_for('plan_jour') }}" title="Plan du jour">☀️{% if notif_plan_jour %}<span class="nav-badge nav-badge-mobile">{{ notif_plan_jour }}</span>{% endif %}</a>
+  <a href="{{ url_for('emploi_temps') }}" title="Emploi du temps">📅</a>
+  <a href="{{ url_for('decouvrir') }}" title="À découvrir">💌{% if notif_decouvrir %}<span class="nav-badge nav-badge-mobile">{{ notif_decouvrir }}</span>{% endif %}</a>
+  <a href="{{ url_for('espace_couple') }}" title="Espace couple">❤️{% if notif_espace_couple %}<span class="nav-badge nav-badge-mobile">{{ notif_espace_couple }}</span>{% endif %}</a>
+  <a href="{{ url_for('profil') }}" title="Profil">👤</a>
+  <a href="{{ url_for('logout') }}" title="Déconnexion">🚪</a>
+</nav>
+{% endif %}
+
+<main class="container">
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
